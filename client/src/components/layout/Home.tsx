@@ -1,146 +1,195 @@
 import React from 'react';
-import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
+import { ArrowRightIcon, HomeIcon, CurrencyDollarIcon, WrenchIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { Button } from '../ui/Button';
 
 const Home: React.FC = () => {
   return (
-    <div className="py-5">
+    <div className="bg-white">
       {/* Hero Section */}
-      <div className="bg-primary text-white py-5 mb-5 rounded">
-        <Container>
-          <Row className="align-items-center">
-            <Col md={6} className="mb-4 mb-md-0">
-              <h1 className="display-4 fw-bold">Rent Management Made Easy</h1>
-              <p className="lead">
-                A comprehensive platform for property owners and tenants to manage
-                rentals, payments, and maintenance requests all in one place.
-              </p>
-              <div className="d-flex gap-3">
-                <Link to="/register">
-                  <Button variant="light" size="lg">Get Started</Button>
-                </Link>
-                <Link to="/login">
-                  <Button variant="outline-light" size="lg">Login</Button>
-                </Link>
-              </div>
-            </Col>
-            <Col md={6}>
+      <div className="relative isolate overflow-hidden">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-b from-primary-50 to-white"></div>
+        <div className="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:flex lg:items-center lg:gap-x-10 lg:px-8 lg:py-40">
+          <div className="mx-auto max-w-2xl lg:mx-0 lg:flex-auto">
+            <h1 className="mt-10 max-w-lg text-4xl font-display font-bold tracking-tight text-neutral-900 sm:text-6xl">
+              Property Management <span className="text-primary-600">Simplified</span>
+            </h1>
+            <p className="mt-6 text-lg leading-8 text-neutral-600">
+              A comprehensive platform for property owners and tenants to manage
+              rentals, payments, and maintenance requests all in one place.
+            </p>
+            <div className="mt-10 flex items-center gap-x-6">
+              <Link to="/register">
+                <Button variant="default" size="lg">
+                  Get Started
+                </Button>
+              </Link>
+              <Link
+                to="/login"
+                className="flex items-center text-base font-semibold leading-6 text-neutral-900 hover:text-primary-600 transition-all duration-200"
+              >
+                Log in <ArrowRightIcon className="ml-1 h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+          <div className="mt-16 sm:mt-24 lg:mt-0 lg:flex-shrink-0 lg:flex-grow">
+            <div className="relative mx-auto h-80 w-80 sm:h-96 sm:w-96 lg:h-[30rem] lg:w-[30rem]">
               <img
+                className="absolute top-0 left-0 max-h-full max-w-full rounded-2xl shadow-xl ring-1 ring-neutral-900/10"
                 src="/images/hero-image.svg"
-                alt="Property Management"
-                className="img-fluid rounded shadow"
+                alt="Property Management Dashboard"
               />
-            </Col>
-          </Row>
-        </Container>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Features Section */}
-      <Container className="mb-5">
-        <h2 className="text-center mb-5">Key Features</h2>
-        <Row>
-          <Col md={4} className="mb-4">
-            <Card className="h-100 shadow-sm">
-              <Card.Body className="text-center p-4">
-                <div className="feature-icon mb-3">
-                  <i className="fas fa-home fa-3x text-primary"></i>
-                </div>
-                <Card.Title>Property Management</Card.Title>
-                <Card.Text>
-                  Easily manage multiple properties, track occupancy, and handle lease agreements in one place.
-                </Card.Text>
-              </Card.Body>
-            </Card>
-          </Col>
-          
-          <Col md={4} className="mb-4">
-            <Card className="h-100 shadow-sm">
-              <Card.Body className="text-center p-4">
-                <div className="feature-icon mb-3">
-                  <i className="fas fa-file-invoice-dollar fa-3x text-primary"></i>
-                </div>
-                <Card.Title>Rent Collection</Card.Title>
-                <Card.Text>
-                  Automated invoicing, M-Pesa integration, and payment tracking to streamline rent collection.
-                </Card.Text>
-              </Card.Body>
-            </Card>
-          </Col>
-          
-          <Col md={4} className="mb-4">
-            <Card className="h-100 shadow-sm">
-              <Card.Body className="text-center p-4">
-                <div className="feature-icon mb-3">
-                  <i className="fas fa-tools fa-3x text-primary"></i>
-                </div>
-                <Card.Title>Maintenance Requests</Card.Title>
-                <Card.Text>
-                  Simple system for tenants to report issues and landlords to track and resolve maintenance requests.
-                </Card.Text>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
+      <div className="bg-white py-24 sm:py-32">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl lg:text-center">
+            <h2 className="text-base font-semibold leading-7 text-primary-600">Streamlined Management</h2>
+            <p className="mt-2 text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl font-display">
+              Everything you need to manage your properties
+            </p>
+            <p className="mt-6 text-lg leading-8 text-neutral-600">
+              RentEase provides powerful tools for both property owners and tenants, making rental management simpler and more efficient.
+            </p>
+          </div>
+          <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
+            <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
+              <div className="flex flex-col">
+                <dt className="flex items-center gap-x-3 text-lg font-semibold leading-7 text-neutral-900">
+                  <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-primary-600">
+                    <HomeIcon className="h-6 w-6 text-white" aria-hidden="true" />
+                  </div>
+                  Property Management
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-neutral-600">
+                  <p className="flex-auto">
+                    Easily manage multiple properties, track occupancy, and handle lease agreements in one place.
+                  </p>
+                  <p className="mt-6">
+                    <Link to="/register" className="text-sm font-semibold leading-6 text-primary-600">
+                      Learn more <span aria-hidden="true">→</span>
+                    </Link>
+                  </p>
+                </dd>
+              </div>
+              <div className="flex flex-col">
+                <dt className="flex items-center gap-x-3 text-lg font-semibold leading-7 text-neutral-900">
+                  <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-primary-600">
+                    <CurrencyDollarIcon className="h-6 w-6 text-white" aria-hidden="true" />
+                  </div>
+                  Rent Collection
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-neutral-600">
+                  <p className="flex-auto">
+                    Automated invoicing, M-Pesa integration, and payment tracking to streamline rent collection.
+                  </p>
+                  <p className="mt-6">
+                    <Link to="/register" className="text-sm font-semibold leading-6 text-primary-600">
+                      Learn more <span aria-hidden="true">→</span>
+                    </Link>
+                  </p>
+                </dd>
+              </div>
+              <div className="flex flex-col">
+                <dt className="flex items-center gap-x-3 text-lg font-semibold leading-7 text-neutral-900">
+                  <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-primary-600">
+                    <WrenchIcon className="h-6 w-6 text-white" aria-hidden="true" />
+                  </div>
+                  Maintenance Requests
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-neutral-600">
+                  <p className="flex-auto">
+                    Simple system for tenants to report issues and landlords to track and resolve maintenance requests.
+                  </p>
+                  <p className="mt-6">
+                    <Link to="/register" className="text-sm font-semibold leading-6 text-primary-600">
+                      Learn more <span aria-hidden="true">→</span>
+                    </Link>
+                  </p>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </div>
 
       {/* How It Works Section */}
-      <div className="bg-light py-5 mb-5 rounded">
-        <Container>
-          <h2 className="text-center mb-5">How It Works</h2>
-          <Row className="g-4">
-            <Col md={3}>
-              <div className="text-center">
-                <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: '60px', height: '60px' }}>
-                  <h3 className="m-0">1</h3>
+      <div className="bg-neutral-50 py-24 sm:py-32">
+        <div className="mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-neutral-900 sm:text-4xl font-display">How It Works</h2>
+            <p className="mt-6 text-lg leading-8 text-neutral-600">
+              Get started with RentEase in just a few simple steps
+            </p>
+          </div>
+          <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
+            <div className="grid grid-cols-1 gap-y-16 gap-x-8 text-center lg:grid-cols-4">
+              <div className="flex flex-col items-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-600 text-white">
+                  <span className="text-2xl font-bold">1</span>
                 </div>
-                <h5>Sign Up</h5>
-                <p className="small">Create an account as a tenant or landlord</p>
+                <h3 className="mt-6 text-lg font-semibold leading-7 tracking-tight text-neutral-900">Sign Up</h3>
+                <p className="mt-2 text-base leading-7 text-neutral-600">Create an account as a tenant or landlord</p>
               </div>
-            </Col>
-            
-            <Col md={3}>
-              <div className="text-center">
-                <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: '60px', height: '60px' }}>
-                  <h3 className="m-0">2</h3>
+
+              <div className="flex flex-col items-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-600 text-white">
+                  <span className="text-2xl font-bold">2</span>
                 </div>
-                <h5>Add Properties</h5>
-                <p className="small">Landlords add properties and assign tenants</p>
+                <h3 className="mt-6 text-lg font-semibold leading-7 tracking-tight text-neutral-900">Add Properties</h3>
+                <p className="mt-2 text-base leading-7 text-neutral-600">Landlords add properties and assign tenants</p>
               </div>
-            </Col>
-            
-            <Col md={3}>
-              <div className="text-center">
-                <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: '60px', height: '60px' }}>
-                  <h3 className="m-0">3</h3>
+
+              <div className="flex flex-col items-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-600 text-white">
+                  <span className="text-2xl font-bold">3</span>
                 </div>
-                <h5>Manage Payments</h5>
-                <p className="small">Generate invoices and process payments</p>
+                <h3 className="mt-6 text-lg font-semibold leading-7 tracking-tight text-neutral-900">Manage Payments</h3>
+                <p className="mt-2 text-base leading-7 text-neutral-600">Generate invoices and process payments</p>
               </div>
-            </Col>
-            
-            <Col md={3}>
-              <div className="text-center">
-                <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: '60px', height: '60px' }}>
-                  <h3 className="m-0">4</h3>
+
+              <div className="flex flex-col items-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-600 text-white">
+                  <span className="text-2xl font-bold">4</span>
                 </div>
-                <h5>Track Maintenance</h5>
-                <p className="small">Handle maintenance requests efficiently</p>
+                <h3 className="mt-6 text-lg font-semibold leading-7 tracking-tight text-neutral-900">Track Maintenance</h3>
+                <p className="mt-2 text-base leading-7 text-neutral-600">Handle maintenance requests efficiently</p>
               </div>
-            </Col>
-          </Row>
-        </Container>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* CTA Section */}
-      <Container className="text-center py-5">
-        <h2>Ready to streamline your rental management?</h2>
-        <p className="lead mb-4">
-          Join thousands of landlords and tenants who are saving time and reducing stress.
-        </p>
-        <Link to="/register">
-          <Button variant="primary" size="lg">Get Started Now</Button>
-        </Link>
-      </Container>
+      <div className="bg-primary-700">
+        <div className="px-6 py-24 sm:px-6 sm:py-32 lg:px-8">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl font-display">
+              Ready to streamline your rental management?
+            </h2>
+            <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-primary-200">
+              Join thousands of landlords and tenants who are saving time and reducing stress.
+            </p>
+            <div className="mt-10 flex items-center justify-center gap-x-6">
+              <Link to="/register">
+                <Button variant="secondary" size="lg">
+                  Get Started Now
+                </Button>
+              </Link>
+              <Link
+                to="/login"
+                className="text-base font-semibold leading-6 text-white hover:text-primary-100 transition-all duration-200"
+              >
+                Log in <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

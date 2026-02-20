@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 100">
+  <text x="15" y="50" font-family="Arial" font-size="24" font-weight="bold" fill="#00a651">LIPA NA</text>
+  <text x="110" y="50" font-family="Arial" font-size="28" font-weight="bold" fill="#00a651">m</text>
+  <path d="M137 30 L145 50 L153 30" fill="#d61a0c" />
+  <text x="154" y="50" font-family="Arial" font-size="28" font-weight="bold" fill="#00a651">pesa</text>
+</svg> 

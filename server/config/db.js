@@ -7,7 +7,7 @@ dotenv.config();
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
-  password: 'pass123', // Hardcoded password
+  password: '1357924680', // Hardcoded password
   database: process.env.DB_NAME || 'rent_management',
   waitForConnections: true,
   connectionLimit: 10,

@@ -3,25 +3,39 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Form, Card, Spinner, Alert, ProgressBar } from 'react-bootstrap';
 import { useAuth } from '../../utils/auth-context';
 import api from '../../utils/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
-// Define PaymentStatusModal component inline to avoid import issues
+// Define enhanced payment status modal with React Query for reliable status updates
 const PaymentStatusModal = (props) => {
-  const { show, onHide, status, transactionDetails, error, onRetry } = props;
-  const [pollingCount, setPollingCount] = useState(0);
-  const [pollingStatus, setPollingStatus] = useState('idle');
+  const { 
+    show, 
+    onHide, 
+    status, 
+    transactionDetails, 
+    error, 
+    onRetry,
+    onPaymentSuccess,
+    onPaymentCancelled,
+    onPaymentFailed,
+    onPaymentExpired
+  } = props;
   const [statusMessage, setStatusMessage] = useState('');
-  const [checkoutRequestID, setCheckoutRequestID] = useState(null);
   const [timeLeft, setTimeLeft] = useState(120); // 2 minutes in seconds
   const [expiryTime, setExpiryTime] = useState(null);
+  const queryClient = useQueryClient();
 
-  // Extract checkout request ID and expiry time from transaction details
+  // Extract checkout request ID from transaction details
+  const checkoutRequestID = transactionDetails?.CheckoutRequestID;
+
+  // Set expiry time based on transaction details
   useEffect(() => {
-    if (transactionDetails?.CheckoutRequestID) {
-      setCheckoutRequestID(transactionDetails.CheckoutRequestID);
-    }
-    
     if (transactionDetails?.expiryTime) {
       setExpiryTime(new Date(transactionDetails.expiryTime));
+    } else if (transactionDetails) {
+      // Default to 2 minutes from now if no expiry time provided
+      const twoMinutesFromNow = new Date();
+      twoMinutesFromNow.setMinutes(twoMinutesFromNow.getMinutes() + 2);
+      setExpiryTime(twoMinutesFromNow);
     }
   }, [transactionDetails]);
 
@@ -48,87 +62,79 @@ const PaymentStatusModal = (props) => {
     };
   }, [show, status, expiryTime]);
 
-  // Poll for payment status if we have a checkout request ID and status is processing
-  useEffect(() => {
-    let pollingInterval;
-    
-    if (show && status === 'processing' && checkoutRequestID) {
-      setPollingStatus('polling');
-      
-      // Start polling
-      pollingInterval = setInterval(async () => {
+  // Use React Query for polling payment status
+  const { data: paymentStatusData } = useQuery({
+    queryKey: ['paymentStatus', checkoutRequestID],
+    queryFn: async () => {
+      if (!checkoutRequestID) return null;
+      try {
+        // First try the mpesa-specific endpoint
+        const response = await api.get(`/api/mpesa/status/${checkoutRequestID}`);
+        return response.data;
+      } catch (error) {
+        // Fall back to the general payment status endpoint
         try {
-          setPollingCount(prev => prev + 1);
-          
-          // Stop polling after 30 attempts (2 minutes)
-          if (pollingCount >= 30) {
-            clearInterval(pollingInterval);
-            setPollingStatus('timeout');
-            setStatusMessage('Payment request timed out. Please try again.');
-            return;
-          }
-          
-          // Call API to check payment status
-          const response = await api.get(`/api/mpesa/status/${checkoutRequestID}`);
-          
-          if (response.data.success) {
-            const paymentData = response.data.data;
-            
-            // Check payment status
-            if (paymentData.status === 'completed') {
-              clearInterval(pollingInterval);
-              setPollingStatus('success');
-              props.onPaymentSuccess(paymentData);
-            } 
-            else if (paymentData.status === 'cancelled') {
-              clearInterval(pollingInterval);
-              setPollingStatus('cancelled');
-              setStatusMessage('You cancelled the payment. Please try again.');
-              props.onPaymentCancelled(paymentData);
-            }
-            else if (paymentData.status === 'failed') {
-              clearInterval(pollingInterval);
-              setPollingStatus('failed');
-              setStatusMessage(paymentData.resultDesc || 'Payment failed. Please try again.');
-              props.onPaymentFailed(paymentData);
-            }
-            else if (paymentData.status === 'expired') {
-              clearInterval(pollingInterval);
-              setPollingStatus('expired');
-              setStatusMessage('Payment request expired. Please try again.');
-              props.onPaymentExpired(paymentData);
-            }
-          }
-        } catch (error) {
-          console.error('Error polling payment status:', error);
+          const fallbackResponse = await api.get(`/api/payments/status/${checkoutRequestID}`);
+          return fallbackResponse.data;
+        } catch (fallbackError) {
+          console.error('Error checking payment status:', fallbackError);
+          return null;
         }
-      }, 4000); // Poll every 4 seconds
-    }
-    
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
       }
-    };
-  }, [show, status, checkoutRequestID, pollingCount, props]);
+    },
+    enabled: !!checkoutRequestID && status === 'processing' && show,
+    refetchInterval: (data) => {
+      // Stop polling when we have a conclusive status
+      if (!data) return 3000; // Poll every 3 seconds by default
+      
+      if (data.success && data.data) {
+        const paymentStatus = data.data.status;
+        
+        // Stop polling for conclusive statuses
+        if (
+          paymentStatus === 'completed' || 
+          paymentStatus === 'success' || 
+          paymentStatus === 'failed' || 
+          paymentStatus === 'cancelled' || 
+          paymentStatus === 'expired'
+        ) {
+          return false;
+        }
+      }
+      
+      return 3000; // Continue polling every 3 seconds
+    },
+    refetchOnWindowFocus: true,
+    retry: 3
+  });
 
-  const getStatusIcon = () => {
-    switch (pollingStatus) {
-      case 'success':
-        return <i className="bi bi-check-circle-fill text-success" style={{ fontSize: '3rem' }}></i>;
-      case 'failed':
-      case 'cancelled':
-      case 'expired':
-        return <i className="bi bi-x-circle-fill text-danger" style={{ fontSize: '3rem' }}></i>;
-      case 'timeout':
-        return <i className="bi bi-exclamation-triangle-fill text-warning" style={{ fontSize: '3rem' }}></i>;
-      default:
-        return <i className="bi bi-hourglass-split text-primary" style={{ fontSize: '3rem' }}></i>;
+  // Process payment status updates from React Query
+  useEffect(() => {
+    if (paymentStatusData?.success && paymentStatusData?.data) {
+      const paymentData = paymentStatusData.data;
+      const paymentStatus = paymentData.status;
+      
+      if (paymentStatus === 'completed' || paymentStatus === 'success') {
+        onPaymentSuccess(paymentData);
+      } else if (paymentStatus === 'cancelled') {
+        setStatusMessage(paymentData.resultDesc || 'You cancelled the payment. Please try again.');
+        onPaymentCancelled(paymentData);
+      } else if (paymentStatus === 'failed') {
+        setStatusMessage(paymentData.resultDesc || 'Payment failed. Please try again.');
+        onPaymentFailed(paymentData);
+      } else if (paymentStatus === 'expired') {
+        setStatusMessage('Payment request expired. Please try again.');
+        onPaymentExpired(paymentData);
+      }
+      
+      // Invalidate relevant queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['paymentHistory'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
     }
-  };
+  }, [paymentStatusData, onPaymentSuccess, onPaymentCancelled, onPaymentFailed, onPaymentExpired, queryClient]);
 
   const getStatusTitle = () => {
-    switch (pollingStatus) {
+    switch (status) {
       case 'success': return 'Payment Successful!';
       case 'failed': return 'Payment Failed';
       case 'cancelled': return 'Payment Cancelled';
@@ -141,7 +147,7 @@ const PaymentStatusModal = (props) => {
   const getStatusMessage = () => {
     if (statusMessage) return statusMessage;
     
-    switch (pollingStatus) {
+    switch (status) {
       case 'success': return 'Your payment has been processed successfully.';
       case 'failed': return error || 'There was a problem processing your payment. Please try again.';
       case 'cancelled': return 'You cancelled the payment. Please try again.';
@@ -157,20 +163,16 @@ const PaymentStatusModal = (props) => {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  const isRetryable = ['failed', 'cancelled', 'expired', 'timeout'].includes(pollingStatus);
+  const isRetryable = ['failed', 'cancelled', 'expired', 'timeout'].includes(status);
 
   return (
     <div className={`modal ${show ? 'show d-block' : 'd-none'}`} tabIndex={-1} role="dialog">
       <div className="modal-dialog modal-dialog-centered">
         <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title text-center w-100">{getStatusTitle()}</h5>
-          </div>
-          <div className="modal-body">
+          <div className="modal-body pt-4">
             <div className="text-center mb-4">
-              {status === 'processing' && pollingStatus === 'polling' ? (
+              {status === 'processing' ? (
                 <>
-                  <Spinner animation="border" variant="primary" style={{ width: '3rem', height: '3rem' }} />
                   {timeLeft > 0 && (
                     <div className="mt-3">
                       <small className="text-muted">Time remaining: {formatTimeLeft(timeLeft)}</small>
@@ -184,7 +186,26 @@ const PaymentStatusModal = (props) => {
                   )}
                 </>
               ) : (
-                getStatusIcon()
+                <div 
+                  className="status-message" 
+                  style={{
+                    fontSize: '1.2rem',
+                    fontWeight: '700',
+                    marginBottom: '1rem',
+                    textAlign: 'center',
+                    padding: '1rem 1.5rem',
+                    borderRadius: '4px',
+                    width: '100%',
+                    backgroundColor: status === 'success' ? '#d4edda' : 
+                                    status === 'failed' || status === 'cancelled' || status === 'expired' ? '#f8d7da' : 
+                                    status === 'timeout' ? '#fff3cd' : '#f8f9fa',
+                    color: status === 'success' ? '#155724' : 
+                           status === 'failed' || status === 'cancelled' || status === 'expired' ? '#721c24' : 
+                           status === 'timeout' ? '#856404' : '#212529'
+                  }}
+                >
+                  {getStatusTitle()}
+                </div>
               )}
               
               <p className="mt-3">{getStatusMessage()}</p>
@@ -228,11 +249,11 @@ const PaymentStatusModal = (props) => {
               </Button>
             )}
             <Button 
-              variant={pollingStatus === 'success' ? "success" : "secondary"} 
+              variant={status === 'success' ? "success" : "secondary"} 
               onClick={onHide} 
-              disabled={status === 'processing' && pollingStatus === 'polling'}
+              disabled={status === 'processing'}
             >
-              {pollingStatus === 'success' ? 'Done' : 'Close'}
+              {status === 'success' ? 'Done' : 'Close'}
             </Button>
           </div>
         </div>
@@ -245,6 +266,7 @@ const MpesaPaymentForm = (props) => {
   const { invoiceId, amount: initialAmount, propertyReference, onPaymentComplete } = props;
   const { user } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   // Form state
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -257,8 +279,24 @@ const MpesaPaymentForm = (props) => {
   const [showModal, setShowModal] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState('pending');
   const [transactionDetails, setTransactionDetails] = useState(null);
-  const [paymentHistory, setPaymentHistory] = useState([]);
-  const [currentPaymentId, setCurrentPaymentId] = useState(null);
+  
+  // React Query for payment history
+  const { data: paymentHistoryData } = useQuery({
+    queryKey: ['paymentHistory', invoiceId],
+    queryFn: async () => {
+      if (!invoiceId) return [];
+      try {
+        const response = await api.get(`/api/payments/invoice/${invoiceId}`);
+        return response.data.success ? response.data.data : [];
+      } catch (error) {
+        console.error('Error fetching payment history:', error);
+        return [];
+      }
+    },
+    enabled: !!invoiceId,
+    refetchOnWindowFocus: true,
+    staleTime: 30000 // 30 seconds
+  });
 
   // Prefill phone number if user has one
   useEffect(() => {
@@ -266,24 +304,6 @@ const MpesaPaymentForm = (props) => {
       setPhoneNumber(user.phone);
     }
   }, [user]);
-
-  // Load payment history for this invoice if available
-  useEffect(() => {
-    if (invoiceId) {
-      fetchPaymentHistory(invoiceId);
-    }
-  }, [invoiceId]);
-
-  const fetchPaymentHistory = async (invoiceId) => {
-    try {
-      const response = await api.get(`/api/payments/invoice/${invoiceId}`);
-      if (response.data.success) {
-        setPaymentHistory(response.data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching payment history:', error);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -318,7 +338,7 @@ const MpesaPaymentForm = (props) => {
       
       // Update status based on response
       if (response.data.success) {
-        // Status will be updated by polling
+        // Status will be updated by polling in the modal
       } else {
         setPaymentStatus('failed');
         setError(response.data.message || 'Payment request failed');
@@ -339,10 +359,8 @@ const MpesaPaymentForm = (props) => {
     // Update transaction details with payment data
     setTransactionDetails(prev => ({ ...prev, ...paymentData }));
     
-    // Refresh payment history if we have an invoice ID
-    if (invoiceId) {
-      fetchPaymentHistory(invoiceId);
-    }
+    // Refresh payment history
+    queryClient.invalidateQueries({ queryKey: ['paymentHistory', invoiceId] });
     
     // Notify parent component if callback provided
     if (onPaymentComplete) {
@@ -357,31 +375,16 @@ const MpesaPaymentForm = (props) => {
     setPaymentStatus('failed');
     setError(paymentData.resultDesc || 'Payment failed');
     setTransactionDetails(prev => ({ ...prev, ...paymentData }));
-    
-    // Store payment ID for potential retry
-    if (paymentData.id) {
-      setCurrentPaymentId(paymentData.id);
-    }
   };
 
   const handlePaymentCancelled = (paymentData) => {
     setPaymentStatus('cancelled');
     setTransactionDetails(prev => ({ ...prev, ...paymentData }));
-    
-    // Store payment ID for potential retry
-    if (paymentData.id) {
-      setCurrentPaymentId(paymentData.id);
-    }
   };
 
   const handlePaymentExpired = (paymentData) => {
     setPaymentStatus('expired');
     setTransactionDetails(prev => ({ ...prev, ...paymentData }));
-    
-    // Store payment ID for potential retry
-    if (paymentData.id) {
-      setCurrentPaymentId(paymentData.id);
-    }
   };
 
   const handleRetryPayment = async () => {
@@ -393,25 +396,15 @@ const MpesaPaymentForm = (props) => {
       setShowModal(true);
       setPaymentStatus('processing');
       
-      let response;
-      
-      if (currentPaymentId) {
-        // Use the retry endpoint if we have a payment ID
-        response = await api.post(`/api/mpesa/retry/${currentPaymentId}`);
-      } else {
-        // Otherwise, create a new payment request
-        response = await api.post('/api/mpesa/stkpush', {
-          phone: phoneNumber,
-          amount: parseFloat(amount),
-          invoice_id: reference
-        });
-      }
+      // Create a new payment request
+      const response = await api.post('/api/mpesa/stkpush', {
+        phone: phoneNumber,
+        amount: parseFloat(amount),
+        invoice_id: reference
+      });
 
       // Update transaction details with response data
       setTransactionDetails(response.data.data);
-      
-      // Reset current payment ID since we're creating a new payment
-      setCurrentPaymentId(null);
       
     } catch (err) {
       console.error('Payment retry error:', err);
@@ -426,18 +419,16 @@ const MpesaPaymentForm = (props) => {
     setShowModal(false);
     
     // If payment was successful, redirect or update UI as needed
-    if (paymentStatus === 'success') {
-      // Redirect to invoice page if we have an invoice ID
-      if (invoiceId) {
-        navigate(`/tenant/invoices/${invoiceId}`);
-      }
+    if (paymentStatus === 'success' && invoiceId) {
+      navigate(`/tenant/invoices/${invoiceId}`);
     }
   };
 
+  // Get recent payment status from payment history
   const getRecentPaymentStatus = () => {
-    if (!paymentHistory || paymentHistory.length === 0) return null;
+    if (!paymentHistoryData || paymentHistoryData.length === 0) return null;
     
-    const sortedPayments = [...paymentHistory].sort((a, b) => 
+    const sortedPayments = [...paymentHistoryData].sort((a, b) => 
       new Date(b.created_at) - new Date(a.created_at)
     );
     
@@ -480,10 +471,7 @@ const MpesaPaymentForm = (props) => {
                 <Button 
                   variant="outline-primary" 
                   size="sm"
-                  onClick={() => {
-                    setCurrentPaymentId(recentPayment.id);
-                    handleRetryPayment();
-                  }}
+                  onClick={handleRetryPayment}
                 >
                   Retry Payment
                 </Button>

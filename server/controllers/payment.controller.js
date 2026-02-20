@@ -600,4 +600,127 @@ exports.getPaymentsByInvoice = async (req, res) => {
       error: error.message
     });
   }
+};
+
+/**
+ * @desc    Get payment status by transaction ID
+ * @route   GET /api/payments/status/:transactionId
+ * @access  Public
+ */
+exports.getPaymentStatus = async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+    
+    // Validate transaction ID
+    if (!transactionId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Transaction ID is required'
+      });
+    }
+    
+    // Get payment by transaction ID
+    const [rows] = await pool.query(
+      `SELECT 
+        id, 
+        transaction_id,
+        mpesa_receipt,
+        status, 
+        amount, 
+        created_at,
+        completed_at,
+        tenant_id,
+        invoice_id,
+        result_desc
+       FROM payments
+       WHERE transaction_id = ? OR mpesa_receipt = ? OR checkout_request_id = ?
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [transactionId, transactionId, transactionId]
+    );
+    
+    if (rows.length === 0) {
+      // If no payment found with this transaction ID, look for pending payments
+      const [pendingRows] = await pool.query(
+        `SELECT 
+          id, 
+          checkout_request_id as transaction_id,
+          mpesa_receipt,
+          status, 
+          amount, 
+          created_at,
+          completed_at,
+          tenant_id,
+          invoice_id,
+          result_desc
+         FROM payments
+         WHERE status = 'pending'
+         ORDER BY created_at DESC
+         LIMIT 5`
+      );
+      
+      if (pendingRows.length === 0) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            transactionId: transactionId,
+            status: 'not_found',
+            message: 'Transaction not found'
+          }
+        });
+      }
+      
+      // Return the latest pending transaction
+      return res.status(200).json({
+        success: true,
+        data: {
+          transactionId: pendingRows[0].transaction_id,
+          status: pendingRows[0].status,
+          amount: pendingRows[0].amount,
+          timestamp: pendingRows[0].created_at
+        }
+      });
+    }
+    
+    // Format the response
+    const payment = rows[0];
+    
+    // Determine the correct status based on both status field and result_desc
+    let displayStatus = payment.status;
+    let statusMessage = null;
+    
+    // Check if the message indicates success despite status being "failed"
+    if (payment.result_desc && payment.result_desc.toLowerCase().includes('processed successfully')) {
+      displayStatus = 'success';
+      statusMessage = 'Payment Successful. Please proceed.';
+    } else if (payment.result_desc && payment.result_desc.toLowerCase().includes('cancelled by user')) {
+      displayStatus = 'cancelled';
+      statusMessage = 'Request cancelled by user';
+    } else if (displayStatus === 'completed') {
+      displayStatus = 'success';
+      statusMessage = 'Payment Successful. Please proceed.';
+    } else if (displayStatus === 'failed') {
+      statusMessage = 'Payment Failed. Please try again.';
+    }
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        transactionId: payment.transaction_id || payment.mpesa_receipt,
+        status: displayStatus,
+        statusMessage: statusMessage,
+        resultDesc: payment.result_desc,
+        amount: payment.amount,
+        timestamp: payment.completed_at || payment.created_at,
+        invoiceId: payment.invoice_id
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching payment status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
 }; 
